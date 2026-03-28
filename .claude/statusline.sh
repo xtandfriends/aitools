@@ -48,6 +48,7 @@ usage_color() {
 claude_config_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # ===== Extract data from JSON =====
 model_name=$(echo "$input" | jq -r '.model.display_name // "Claude"')
+model_name="${model_name//(1M context)/(1M)}"
 
 # Context window
 size=$(echo "$input" | jq -r '.context_window.context_window_size // 200000')
