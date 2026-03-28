@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "ctx7sk-d4a7a527-9005-4ebc-9436-5018675e45e4"
+      }
+    },
+    "jina": {
+      "type": "http",
+      "url": "https://mcp.jina.ai/v1",
+      "headers": {
+        "Authorization": "Bearer jina_5906816983af43c583411306bde81bdbp1DI-vBn7I2UKW4ImWCym2uz1t7k"
+      }
+    }
+  }
+}
