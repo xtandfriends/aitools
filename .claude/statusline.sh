@@ -2,7 +2,6 @@
 # Single line: Model | tokens | %used | %remain | think | 5h bar @reset | 7d bar @reset | extra
 
 set -f  # disable globbing
-VERSION="1.1.0"
 
 input=$(cat)
 
@@ -26,17 +25,12 @@ reset='\033[0m'
 format_tokens() {
     local num=$1
     if [ "$num" -ge 1000000 ]; then
-        awk "BEGIN {printf \"%.1fm\", $num / 1000000}"
+        awk -v n="$num" 'BEGIN {printf "%.1fm", n / 1000000}'
     elif [ "$num" -ge 1000 ]; then
-        awk "BEGIN {printf \"%.0fk\", $num / 1000}"
+        awk -v n="$num" 'BEGIN {printf "%.0fk", n / 1000}'
     else
         printf "%d" "$num"
     fi
-}
-
-# Format number with commas (e.g., 134,938)
-format_commas() {
-    printf "%'d" "$1"
 }
 
 # Return color escape based on usage percentage
@@ -52,22 +46,6 @@ usage_color() {
 
 # Resolve config directory: CLAUDE_CONFIG_DIR (set by alias) or default ~/.claude
 claude_config_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-
-# Return 0 (true) if $1 > $2 using semantic versioning
-version_gt() {
-    local a="${1#v}" b="${2#v}"
-    local IFS='.'
-    read -r a1 a2 a3 <<< "$a"
-    read -r b1 b2 b3 <<< "$b"
-    a1=${a1:-0}; a2=${a2:-0}; a3=${a3:-0}
-    b1=${b1:-0}; b2=${b2:-0}; b3=${b3:-0}
-    [ "$a1" -gt "$b1" ] 2>/dev/null && return 0
-    [ "$a1" -lt "$b1" ] 2>/dev/null && return 1
-    [ "$a2" -gt "$b2" ] 2>/dev/null && return 0
-    [ "$a2" -lt "$b2" ] 2>/dev/null && return 1
-    [ "$a3" -gt "$b3" ] 2>/dev/null && return 0
-    return 1
-}
 # ===== Extract data from JSON =====
 model_name=$(echo "$input" | jq -r '.model.display_name // "Claude"')
 
@@ -88,20 +66,6 @@ if [ "$size" -gt 0 ]; then
     pct_used=$(( current * 100 / size ))
 else
     pct_used=0
-fi
-pct_remain=$(( 100 - pct_used ))
-
-used_comma=$(format_commas $current)
-remain_comma=$(format_commas $(( size - current )))
-
-# Check reasoning effort
-settings_path="$claude_config_dir/settings.json"
-effort_level="medium"
-if [ -n "$CLAUDE_CODE_EFFORT_LEVEL" ]; then
-    effort_level="$CLAUDE_CODE_EFFORT_LEVEL"
-elif [ -f "$settings_path" ]; then
-    effort_val=$(jq -r '.effortLevel // empty' "$settings_path" 2>/dev/null)
-    [ -n "$effort_val" ] && effort_level="$effort_val"
 fi
 
 # ===== Build single-line output =====
@@ -212,7 +176,7 @@ if $needs_refresh; then
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $token" \
             -H "anthropic-beta: oauth-2025-04-20" \
-            -H "User-Agent: claude-code/2.1.34" \
+            -H "User-Agent: claude-code-statusline" \
             "https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
         # Only cache valid usage responses (not error/rate-limit JSON)
         if [ -n "$response" ] && echo "$response" | jq -e '.five_hour' >/dev/null 2>&1; then
@@ -326,43 +290,7 @@ else
     out+="${sep}${white}7d${reset} ${dim}-${reset}"
 fi
 
-# ===== Update check (cached, 24h TTL) =====
-version_cache_file="/tmp/claude/statusline-version-cache.json"
-version_cache_max_age=86400  # 24 hours
-
-version_needs_refresh=true
-version_data=""
-
-if [ -f "$version_cache_file" ]; then
-    vc_mtime=$(stat -c %Y "$version_cache_file" 2>/dev/null || stat -f %m "$version_cache_file" 2>/dev/null)
-    vc_now=$(date +%s)
-    vc_age=$(( vc_now - vc_mtime ))
-    if [ "$vc_age" -lt "$version_cache_max_age" ]; then
-        version_needs_refresh=false
-    fi
-    version_data=$(cat "$version_cache_file" 2>/dev/null)
-fi
-
-if $version_needs_refresh; then
-    touch "$version_cache_file" 2>/dev/null
-    vc_response=$(curl -s --max-time 5 \
-        -H "Accept: application/vnd.github+json" \
-        "https://api.github.com/repos/daniel3303/ClaudeCodeStatusLine/releases/latest" 2>/dev/null)
-    if [ -n "$vc_response" ] && echo "$vc_response" | jq -e '.tag_name' >/dev/null 2>&1; then
-        version_data="$vc_response"
-        echo "$vc_response" > "$version_cache_file"
-    fi
-fi
-
-update_line=""
-if [ -n "$version_data" ]; then
-    latest_tag=$(echo "$version_data" | jq -r '.tag_name // empty')
-    if [ -n "$latest_tag" ] && version_gt "$latest_tag" "$VERSION"; then
-        update_line="\n${dim}Update available: ${latest_tag} → https://github.com/daniel3303/ClaudeCodeStatusLine${reset}"
-    fi
-fi
-
 # Output
-printf "%b" "$out$update_line"
+printf "%b" "$out"
 
 exit 0
