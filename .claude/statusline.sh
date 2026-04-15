@@ -1,5 +1,6 @@
 #!/bin/bash
-# Single line: Model | tokens | %used | %remain | think | 5h bar @reset | 7d bar @reset | extra
+# Single line: cwd@branch  Model  tokens (%used)  5h %  7d %  extra
+# Segments are separated by a single space; color differences distinguish them.
 
 set -f  # disable globbing
 
@@ -85,9 +86,9 @@ if [ -n "$cwd" ]; then
     fi
 fi
 
-out+=" ${dim}|${reset} "
+out+=" "
 out+="${blue}${model_name}${reset}"
-out+=" ${dim}|${reset} "
+out+=" "
 out+="${orange}${used_tokens}/${total_tokens}${reset} ${dim}(${reset}${green}${pct_used}%${reset}${dim})${reset}"
 
 # ===== Cross-platform OAuth token resolution (from statusline.sh) =====
@@ -250,7 +251,7 @@ format_time_remaining() {
     fi
 }
 
-sep=" ${dim}|${reset} "
+sep=" "
 
 if [ -n "$usage_data" ] && echo "$usage_data" | jq -e '.five_hour' >/dev/null 2>&1; then
     # ---- 5-hour (current) ----
