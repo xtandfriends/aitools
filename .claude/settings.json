@@ -6,5 +6,8 @@
   "statusLine": {
     "type": "command",
     "command": ".claude/statusline.sh"
+  },
+  "permissions": {
+    "defaultMode": "auto"
   }
 }
